@@ -2,8 +2,8 @@ all : client server
 
 client : src/client.c src/structs.h
 	mkdir -p target
-	gcc src/client.c -o target/client
+	gcc src/client.c -o target/client -g -lpthread
 
 server : src/server.c src/structs.h src/parser.h
 	mkdir -p target
-	gcc src/server.c -o target/server
+	gcc src/server.c -o target/server -g

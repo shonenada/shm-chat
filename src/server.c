@@ -53,10 +53,12 @@ void beforeExit(int sig) {
 }
 
 int main(int argc, char * argv[]) {
-    int res, client_fd;
-    Protocol protocol;
-    protocol.msg_type = MSG_TYPE_COMMON;
-    Response* response;
+    int shmid;
+    void* responseMEM = (void*) NULL;
+    void* protocolMEM = (void*) NULL;
+    Response* response = NULL;
+    Protocol* protocol = NULL;
+
     serverEnv.userCount = 0;
 
     loadFromFile();
@@ -65,31 +67,33 @@ int main(int argc, char * argv[]) {
     signal(SIGINT, beforeExit);
     signal(SIGTERM, beforeExit);
 
-    serverEnv.serverMSGID = msgget((key_t) SERVER_MSGID, 0666 | IPC_CREAT);
-    if (serverEnv.serverMSGID == -1) {
-        fprintf(stderr, "Msgget(server) failed with errno: %d\n", errno);
+    serverEnv.serverShmID = shmget((key_t) SERVER_SHMID, sizeof(Protocol), 0666 | IPC_CREAT);
+    if (serverEnv.serverShmID == -1) {
+        fprintf(stderr, "shmget(server) failed with errno: %d\n", errno);
         exit(EXIT_FAILURE);
     }
+
+    protocolMEM = shmat(serverEnv.serverShmID, (void*) 0, 0);
+    if (protocolMEM == (void*) -1) {
+        fprintf(stderr, "shmat(server) failed with errno: %d\n", errno);
+        exit(EXIT_FAILURE);
+    }
+    serverEnv.protocol = (Protocol*) protocolMEM;
+    serverEnv.protocol->isNew = 0;
+    serverEnv.protocol->pid = 0;
+    serverEnv.protocol->msg[0] = '\0';
 
     printf("\nServer is runing!\n");
 
     while(1) {
-        if (msgrcv(serverEnv.serverMSGID, (void*)&protocol, SIZE_OF_PROTOCOL, MSG_TYPE_COMMON, 0) == -1) {
-            fprintf(stderr, "msgrcv failed with errno: %d\n", errno);
-            exit(EXIT_FAILURE);
-        }
-        else {
-            printf("Protocol: %d - %s", protocol.pid, protocol.msg);
-            response = parse(&serverEnv, &protocol);
-
-            int msgid = msgget((key_t) protocol.pid, 0666);
-
-            if (msgsnd(msgid, (void*)response, SIZE_OF_RESPONSE, 0) == -1) {
-                fprintf(stderr, "MSGSND failed\n");
-                exit(EXIT_FAILURE);
+        if (serverEnv.protocol->pid > 0 && serverEnv.protocol->isNew == 1) {
+            printf("Protocol: %d - %s", serverEnv.protocol->pid, serverEnv.protocol->msg);
+            shmid = shmget((key_t) serverEnv.protocol->pid, sizeof(Response), 0666 | IPC_CREAT);
+            responseMEM = shmat(shmid, (void*) NULL, 0);
+            response = (Response*) responseMEM;
+            if (parse(&serverEnv, response)) {
+                serverEnv.protocol->pid = 0;
             }
-
-            free(response);
         }
     }
 
