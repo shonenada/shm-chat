@@ -27,7 +27,7 @@ void Logout() {
     while(1) {
         if (env->protocol->pid == 0) {
             env->protocol->pid = env->pid;
-            sprintf(env->protocol->msg, "OUT\n");
+            sprintf(env->protocol->msg, "OUT %s\n", env->username);
             env->protocol->isNew = 1;
             break;
         }else {

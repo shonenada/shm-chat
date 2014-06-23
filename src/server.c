@@ -53,6 +53,34 @@ void beforeExit(int sig) {
 }
 
 int main(int argc, char * argv[]) {
+    
+    pid_t pid;
+    pid = fork();
+    if (pid < 0) {
+        perror("Fork\n");
+        exit(EXIT_FAILURE);
+    }
+    if (pid != 0) {
+        exit(0);
+    }
+
+    pid = setsid();
+    if (pid < -1) {
+        perror("Setsid\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int dev_fd = open("/dev/null", O_RDWR, 0);
+    if (dev_fd == -1) {
+        dup2(dev_fd, STDIN_FILENO);
+        dup2(dev_fd, STDOUT_FILENO);
+        dup2(dev_fd, STDERR_FILENO);
+        if (dev_fd > 2) {
+            close(dev_fd);
+        }
+    }
+    umask(0000);
+
     int shmid;
     void* responseMEM = (void*) NULL;
     void* protocolMEM = (void*) NULL;
