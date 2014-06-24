@@ -127,14 +127,11 @@ void LoginHandler(ServerEnv* env, Response* response) {
         return ;
     }
     else if (flag == 1) {
+        char msg[512];
         response->state = LOG_SUCCESS;
         sprintf(response->msg, "%s: Login successfully.\n", username);
-        Response* loginResponse = (Response*) malloc(sizeof(Response));
-        loginResponse->type = RESPONSE_TYPE_CHT;
-        loginResponse->state = CHT_TALK;
-        sprintf(loginResponse->msg, "\033[47;31mSystem Info: %s onlined.\033[0m\n", username);
-        broadcast(env, loginResponse);
-        free(loginResponse);
+        sprintf(msg, "\033[47;31mSystem Info: %s onlined.\033[0m\n", username);
+        broadcast(env, msg);
         response->isNew = 1;
         return ;
     }
